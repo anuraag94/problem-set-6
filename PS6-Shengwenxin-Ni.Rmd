@@ -1,0 +1,275 @@
+---
+title: "PS6-Shengwenxin-Ni"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(patchwork)
+library(rcfss)
+library(e1071)
+library(caret)
+```
+# Question 1
+
+```{r}
+library(e1071)
+set.seed(1)
+x = rnorm(100)
+y = 8 * x^2 +4 + rnorm(100)
+class = sample(100, 70)
+y[class] = y[class] + 5
+y[-class] = y[-class] - 5
+plot(x[class], y[class], col = "red", 
+     xlab = "X", ylab = "Y", 
+     ylim = c(-10, 50),xlim = c(-3, 3 ),
+     main = 'Two-class data set with 100 observations' )
+points(x[-class], y[-class], col = "blue")
+```
+
+## Case 1: Kernel = Linear
+```{r}
+z = rep(-1, 100)
+z[class] = 1
+data = data.frame(x = x, y = y, z = as.factor(z))
+train = sample(100, 70)
+data.train = data[train, ]
+data.test = data[-train, ]
+svm.linear = svm(z ~ ., data = data.train, kernel = "linear", cost = 10)
+plot(svm.linear, data.train)
+
+```
+
+## Case 2: Kernel = Polynomial
+```{r}
+svm.poly = svm(z ~ ., data = data.train, kernel = "polynomial", cost = 10)
+plot(svm.poly, data.train)
+```
+
+## Case 3: Kernel = Radial
+```{r}
+svm.radial = svm(z ~ ., data = data.train, kernel = "radial", cost = 10)
+plot(svm.radial, data.train)
+```
+
+## Errors on the training set
+```{r}
+table(predict = predict(svm.linear, data.train), truth = data.train$z)
+table(predict = predict(svm.poly, data.train), truth = data.train$z)
+table(predict = predict(svm.radial, data.train), truth = data.train$z)
+```
+The above tables show that on the training set, the SVM classifier:
+ · with a linear kernel has 9 errors out of 70 and an error rate of 0.1285714
+ · with a polynomial kernel has 23 errors out of 70 and an error rate of 0.3285714
+ · with a linear kernel has 1 errors out of 70 and an error rate of 0.01428571 (BEST)
+ 
+## Fit on the testing data
+```{r}
+table(predict = predict(svm.linear, data.test), truth = data.test$z)
+table(predict = predict(svm.poly, data.test), truth = data.test$z)
+table(predict = predict(svm.radial, data.test), truth = data.test$z)
+```
+The above tables show that on the training set, the SVM classifier:
+ · with a linear kernel has 1 errors out of 30 and an error rate of 0.03333333
+ · with a polynomial kernel has 6 errors out of 30 and an error rate of 0.2
+ · with a linear kernel has 0 errors out of 30 and an error rate of 0.0 (BEST)
+ 
+ All the statistics above show that SVM classifier with a RADIAL kernel is the best technique, not only on the training data set but on the testing data set as well.  
+
+
+
+# Question 2: Generate a data set
+```{r}
+set.seed(828)
+x1 <- runif(500) - 0.5
+x2 <- runif(500) - 0.5
+y <- as.integer(x1 ^ 2 - x2 ^ 2 > 0)
+```
+# Question 3: Plot the observations
+```{r}
+plot(x1[y == 0], x2[y == 0],col = "red", xlab = "X1", ylab = "X2")
+points(x1[y == 1], x2[y == 1], col = 'green')
+
+```
+# Question 4: Fit a logistic regression
+```{r}
+dat <- data.frame(x1 = x1, x2 = x2, y = as.factor(y))
+lr.fit <- glm(y ~ ., data = dat, family = 'binomial')
+summary(lr.fit)
+```
+# Question 5: Obtain a predicted class label
+```{r}
+lr.prob <- predict(lr.fit, newdata = dat, type = 'response')
+lr.pred <- ifelse(lr.prob > 0.5, 1, 0)
+plot(dat$x1, dat$x2, col = lr.pred + 2,xlab = "X1", ylab = "X2")
+```
+
+The predicted decision boundary looks linear because it's almost a straight line. 
+
+# Question 6: Fit a logistic regression with a non-linear function
+```{r}
+lr.nl <- glm(y ~ poly(x1, 2) + poly(x2, 2), data = dat, family = 'binomial')
+summary(lr.nl)
+```
+# Question 7: Obtain a predicted class label
+```{r}
+lr.prob.nl <- predict(lr.nl, newdata = dat, type = 'response')
+lr.pred.nl <- ifelse(lr.prob.nl > 0.5, 1, 0)
+plot(dat$x1, dat$x2, col = lr.pred.nl + 2,xlab = "X1", ylab = "X2")
+```
+The decision boundary is obviously non-linear because it's not a simple straight line. 
+
+# Question 8: Fit a support vector classifier (linear kernel) 
+```{r}
+svm.lin <- svm(y ~ ., data = dat, kernel = 'linear', cost = 0.01)
+plot(svm.lin, dat)
+```
+
+# Question 9: Fit a SVM using a non-linear kernel to the data.
+```{r}
+svm.nl <- svm(y ~ ., data = dat, kernel = 'radial', gamma = 1,cost = 5)
+plot(svm.nl, data = dat)
+```
+# Question 10 : Comments
+To estimating non-linear decision boundaries, SVM with the linear kernel and logistic regression without any interaction term are not effective enough.Fortunately, both SVM with a non-linear kernel (in this case, radial) and logistic regression with a non-linear function (in this case, polynomial of degree two) are powerful in classfication. However, it takes time for us for finding an proper non-linear function for the logistic regression and tuning gamma and cost for SVM.
+
+
+## Question 11 :
+
+```{r}
+set.seed(317)
+obs = 1000
+x1 <- runif(obs, min = -4, max = 4)
+x2 <- runif(obs, min = -1, max = 16)
+y <- ifelse(x2 > x1 ^ 2, 0, 1)
+dat <- data.frame(x1 = x1, x2 = x2, y = as.factor(y))
+train <- sample(obs, obs/2)
+dat.train <- dat[train, ]
+dat.test <- dat[-train, ]
+par(mfrow = c(1,2))
+plot(dat.train$x1, dat.train$x2, col = as.integer(dat.train$y) + 1, 
+     xlab = "X1", ylab = "X2",main = 'training set')
+plot(dat.test$x1, dat.test$x2, col = as.integer(dat.test$y) + 1, 
+     xlab = "X1", ylab = "X2",main = 'test set')
+```
+
+## Question 12.1  CV error rates 
+```{r}
+set.seed(828)
+cost.grid <- c(0.001, 0.01, 0.1, 1, 5, 10, 100, 10000)
+tune.out <- tune(svm, y ~., data = dat.train, kernel = 'linear', ranges = list(cost = cost.grid))
+summary(tune.out)
+```
+ From the summary table,it's clear that as cost value increases, cv error rate decreases and then increases. The best error rate 0.210 (105 errors out of 500) is achieved when cost = 0.1.
+
+## Question 12.2   Training error rates
+```{r}
+set.seed(828)
+err.rate.train <- rep(NA, length(cost.grid))
+for (cost in cost.grid) {
+  svm.fit <- svm(y ~ ., data = dat.train, kernel = 'linear', cost = cost)
+  res <- table(prediction = predict(svm.fit, newdata = dat.train), truth = dat.train$y)
+  err.rate.train[match(cost, cost.grid)] <- (res[2,1] + res[1,2]) / sum(res)
+}
+
+
+for (err in err.rate.train){cat( 'number of errors (out of 500):',err*500,'; error rate:',err, '\n')} 
+```
+From the results above, we can see that the error rates for the training data has a SIMILAR pattrern compared to that of CV: as the cost value increases, the error rate decreases and then increases. Therefore, the best error rate 0.208 (104 errors) is achieved at a middle value where cost = 0.1. 
+
+# Question 13 Test Errors
+
+```{r}
+set.seed(828)
+err.rate.test <- rep(NA, length(cost.grid))
+for (cost in cost.grid) {
+  svm.fit <- svm(y ~ ., data = dat.train, kernel = 'linear', cost = cost)
+  res <- table(prediction = predict(svm.fit, newdata = dat.test), truth = dat.test$y)
+  err.rate.test[match(cost, cost.grid)] <- (res[2,1] + res[1,2]) / sum(res)
+}
+
+for (err in err.rate.test){cat( 'number of errors (out of 500):',err*500,'; error rate:',err, '\n')} 
+
+```
+
+The best error rate 0.238 (119 errors out of 500) is generated when cost = 0.01, which is different from what we've got in the training and cv. However, when cost = 0.1, we get the second best error rate 0.242 (121 errors out of 500), which is every close to 0.238. In addition, the pattern of error rates of the testing dataset is very similar to that of the training and CV.
+
+# Question 14: Comments
+
+Generally, it's true that the a support vector classifier with a small value of cost (best cost value at either 0.01 or 0.1) would perform better than the one with a huge value of cost because the large costs tend to overfit the data with a narrow margin. However, according to the output error rate, an extremly cost value can be problematic as well. Perhaps, this is because when a cost value become too small, the margin becomes too wide and therefore the classifier loses its function to classify. 
+
+# Question 15: Fit a SVC to predict colrac
+```{r}
+library(tidyverse)
+train <- read_csv("/Users/nishengwenxin/Documents/GitHub/problem-set-6/data/gss_train.csv")
+test <- read_csv("/Users/nishengwenxin/Documents/GitHub/problem-set-6/data/gss_test.csv")
+```
+
+```{r}
+set.seed(317)
+tune.lin <- tune(svm,  colrac ~ ., data = train, kernel = 'linear',  ranges = list(cost = c(0.01, 0.1, 1, 10, 100)))
+summary(tune.lin)
+```
+The cost and its cv errors are shown above. We can see that the lowest error rate, 0.1825 , is achieved when cost =  0.01
+
+Here's the prediction based on this model on the test dataset.
+```{r}
+svm.lin <- svm(colrac ~., data=train, kernel='linear', cost=0.01)
+table(predict=ifelse(predict(svm.lin, test) > 0.5, 1, 0), 
+      truth=test$colrac)
+```
+Therefore, the error rate is (27+111)/493 = 0.2799189
+
+
+# Question 16.1 Polynomial
+
+```{r}
+set.seed(317)
+tune.pol <- tune(svm, colrac ~ ., data = train, kernel = "polynomial", ranges = list(cost =  c(0.01, 0.1, 1, 10,100), degree = c(2, 3, 4)))
+summary(tune.pol)
+```
+
+
+Each combination of cost and degrees and its cv error is shown above. We can see that the lowest error rate,  0.1508771  , is achieved when cost =  1 and degree = 3.
+
+Here's the prediction based on this model on the test dataset.
+```{r}
+svm.poly <- svm(colrac ~., data=train, kernel='polynomial', cost=1, degree = 3)
+table(predict=ifelse(predict(svm.poly, test) > 0.5, 1, 0), 
+      truth=test$colrac)
+```
+
+Therefore, the error rate is (72+45)/493 = 0.2373225
+
+# Question 16.2 Radial
+```{r}
+set.seed(317)
+tune.rad <- tune(svm, colrac ~ ., data = train, kernel = "radial", ranges = list(cost =  c(0.01, 0.1, 1, 10,100), gamma = c(0.01,0.1, 1, 10,100)))
+summary(tune.rad)
+```
+Each combination of cost and gamma and its cv error is shown above. We can see that the lowest error rate,  0.1482373, is achieved when cost =  1 and gamma = 0.01.
+
+Here's the prediction based on this model on the test dataset.
+
+```{r}
+svm.rad <- svm(colrac ~., data=train, kernel='radial', cost=1, gamma = 0.01)
+table(predict=ifelse(predict(svm.rad, test) > 0.5, 1, 0), 
+      truth=test$colrac)
+```
+
+
+Therefore, the error rate is (34+74)/493 = 0.2197
+
+# 16.3 Comments
+
+The smallest CV error rate for a tuned SVM classifer are: 
+Linear: 0.1825  Polynomial: 0.1508771   Radial: 0.1482373
+
+
+The smallest testing error rate for a tuned SVM classifer are: 
+Linear:0.2799189 Polynomial: 0.2373225  Radial: 0.2197
+
+In terms of the error rate, we can see that a SVM classifier with its best tuned parameter perform better with a non-linear kernel. And for above two SVM classifiers with non-linear kernels, the best models both take cost = 1. However, cost for the linear model takes 0.01 that suggests a wide range of margin and the insigificant difference between the resulting cv error rates (0.18 to 0.20) suggests that the model is performing badly on the dataset. Fortunately, SVM classifiers with kernel = polynomial and radial performs well. The radial one is even slightly better in both CV errors and the testing errors. Perhaps, we do should use radial SVM to interprete colrac by other features. 
